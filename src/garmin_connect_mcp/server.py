@@ -4,12 +4,16 @@ from textwrap import dedent
 
 from dotenv import load_dotenv
 from fastmcp import FastMCP
+from .bearer_auth import bearer_auth_middleware
 
 # Load environment variables
 load_dotenv()
 
 # Initialize FastMCP server
-mcp = FastMCP("Garmin Connect")
+mcp = FastMCP(
+    "Garmin Connect",
+    middleware=bearer_auth_middleware(),
+)
 
 # Register middleware
 from .middleware import ConfigMiddleware
