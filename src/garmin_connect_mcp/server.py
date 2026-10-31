@@ -440,7 +440,27 @@ async def health_summary(period: str = "7d") -> str:
 def main():
     """Main entry point for the Garmin Connect MCP server."""
     # Run the server with stdio transport (default)
-    mcp.run()
+    import os
+
+    transport = os.getenv("MCP_TRANSPORT", "stdio")
+
+    if transport == "http":
+        import uvicorn
+        from starlette.middleware import Middleware
+
+        from .bearer_auth import BearerAuthMiddleware
+
+        # Montage explicite de l'app HTTP : les middlewares Starlette sont
+        # attachés à l'ASGI avant la logique MCP. Le paramètre `middleware`
+        # du constructeur FastMCP n'est pas propagé par mcp.run().
+        app = mcp.http_app(middleware=[Middleware(BearerAuthMiddleware)])
+
+        host = os.getenv("MCP_HOST", "0.0.0.0")
+        port = int(os.getenv("MCP_PORT", "8080"))
+        uvicorn.run(app, host=host, port=port)
+
+    else :
+        mcp.run()
 
 
 if __name__ == "__main__":
