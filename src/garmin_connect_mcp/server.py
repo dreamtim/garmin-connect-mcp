@@ -1,6 +1,7 @@
 """Garmin Connect MCP Server - Main entry point."""
 
 from textwrap import dedent
+import os
 
 from dotenv import load_dotenv
 from fastmcp import FastMCP
@@ -435,9 +436,23 @@ async def health_summary(period: str = "7d") -> str:
 
 def main():
     """Main entry point for the Garmin Connect MCP server."""
-    # Run the server with stdio transport (default)
-    mcp.run()
+    import os
 
+    transport = os.getenv("MCP_TRANSPORT", "stdio")
+    host = os.getenv("MCP_HOST", "0.0.0.0")
+    port = int(os.getenv("MCP_PORT", "8000"))
+
+    if transport in ("http", "streamable-http"):
+        import uvicorn
+        from .bearer_auth import BearerAuthASGI
+
+        # Enveloppe ASGI pure : l'auth s'applique avant le transport MCP,
+        # sans dépendre du format de middleware interne de FastMCP.
+        app = mcp.http_app()
+        app = BearerAuthASGI(app)
+        uvicorn.run(app, host=host, port=port)
+    else:
+        mcp.run(transport=transport, host=host, port=port)
 
 if __name__ == "__main__":
     main()
